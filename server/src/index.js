@@ -1,0 +1,22 @@
+import 'dotenv/config';
+import express from 'express';
+import http from 'http';
+import cors from 'cors';
+import helmet from 'helmet';
+import { Server } from 'socket.io';
+import jwt from 'jsonwebtoken';
+import { router } from './routes.js';
+import { authenticate } from './auth.js';
+import { query } from './db.js';
+import { setIo } from './realtime.js';
+
+const app = express(), server = http.createServer(app);
+export const io = new Server(server, { cors: { origin: process.env.CLIENT_ORIGIN || 'http://localhost:5173' } });
+setIo(io);
+app.use(helmet({ contentSecurityPolicy: { directives: { frameSrc: ["'self'", "https://www.openstreetmap.org"] } } })); app.use(cors({ origin: process.env.CLIENT_ORIGIN || 'http://localhost:5173' })); app.use(express.json({ limit: '8mb' }));
+app.use('/api', router);
+io.use(async (socket, next) => { try { const token=socket.handshake.auth?.token;if(!token)return next(new Error('Authentication required'));const claims=jwt.verify(token,process.env.JWT_SECRET||'local-development-only-change-me'),users=await query('SELECT id,role,is_active FROM users WHERE id=?',[claims.id]);if(!users[0]||!users[0].is_active)return next(new Error('Account is inactive'));socket.user={id:users[0].id,role:users[0].role};next();}catch{next(new Error('Invalid session'));} });
+io.on('connection', socket => { socket.join(`user:${socket.user.id}`); socket.on('booking_join', async id => { try { const rows = await query('SELECT farmer_id,owner_id FROM bookings WHERE id=?', [id]); if (rows[0] && [rows[0].farmer_id, rows[0].owner_id].includes(socket.user.id)) socket.join(`booking:${id}`); } catch {} }); });
+app.get('/api/health', (_, res) => res.json({ status: 'ok', app: 'Agriiigo' }));
+app.use((err, req, res, next) => { console.error(err); const message=err.status?err.message:process.env.NODE_ENV==='production'?'Something went wrong. Please try again.':(err.sqlMessage||err.message||'Something went wrong. Please try again.'); res.status(err.status || 500).json({ error: message }); });
+const port = Number(process.env.PORT || 5000); server.listen(port, () => console.log(`Agriiigo API listening on http://localhost:${port}`));

@@ -1,0 +1,11 @@
+node_modules/
+.npm-cache/
+dist/
+.env
+*.log
+coverage/
+.DS_Store
+uploads/private/*
+!uploads/private/.gitkeep
+server/uploads/private/*
+!server/uploads/private/.gitkeep

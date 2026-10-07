@@ -1,0 +1,3 @@
+export const haversine = (a, b, c, d) => { const r = Math.PI / 180, x = (c-a)*r, y = (d-b)*r; const h = Math.sin(x/2)**2 + Math.cos(a*r)*Math.cos(c*r)*Math.sin(y/2)**2; return 6371 * 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1-h)); };
+export const asyncRoute = fn => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
+export function priceFor(model, price, quantity) { if (!Number.isFinite(+price) || +price < 0 || !Number.isFinite(+quantity) || +quantity <= 0) throw Object.assign(new Error('Enter a valid price and positive quantity.'), { status: 400 }); return model === 'QUOTE' ? null : model === 'FIXED' ? +price : +price * +quantity; }
